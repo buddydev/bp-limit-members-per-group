@@ -19,7 +19,7 @@ class BP_Limit_Members_Group_Helper{
         add_action( 'init', array( $this, 'remove_hooks' ) );
         
         //Admin Options under BuddyPress->Settings 
-        add_action( 'bp_admin_init',array( $this, 'register_settings' ), 20 );
+        add_action( 'bp_admin_init', array( $this, 'register_settings' ), 20 );
         
          //load text domain
         add_action ( 'bp_loaded', array( $this, 'load_textdomain' ), 2 );
@@ -389,8 +389,9 @@ class BP_Limit_Members_Group_Helper{
     
     /** register settings for admin*/
     function register_settings(){
+      
             // Add the ajax Registration settings section
-            add_settings_section( 'bp_limit_group_membership_request',__( 'BP Limit Members Per Group',  'bp-limit-group-membership' ), array( $this, 'reg_section' ), 'bp-limit-group-membership' );
+            add_settings_section( 'bp_limit_group_membership_request',__( 'BP Limit Members Per Group',  'bp-limit-group-membership' ), array( $this, 'reg_section' ), 'buddypress' );
             // Allow loading form via jax or nt?
             add_settings_field( 'bp_limit_group_membership_count', __( 'How many Users Can join?',   'bp-limit-group-membership' ), array( $this, 'settings_field_count' ),   'buddypress', 'bp_limit_group_membership_request' );
             add_settings_field( 'bp_limit_group_membership_message', __( 'What Message you want to display if the group reaches the limit?',   'bp-limit-group-membership' ), array( $this, 'settings_field_message' ),   'buddypress', 'bp_limit_group_membership_request' );
@@ -430,4 +431,7 @@ class BP_Limit_Members_Group_Helper{
    
 }
 
-BP_Limit_Members_Group_Helper::get_instance();
+add_action('bp_loaded','bp_group_membership_limit_init');
+function bp_group_membership_limit_init(){
+    BP_Limit_Members_Group_Helper::get_instance();
+}
