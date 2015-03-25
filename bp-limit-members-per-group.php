@@ -97,7 +97,7 @@ class BP_Limit_Members_Group_Helper {
         
         //for private group request membership, we will have to disallow the buddypress core function to handle it
         
-        self::change_screen_callback();
+       self::change_screen_callback();
     }
      /**
      * Changes the callback used for request membership/group invite accept
@@ -243,31 +243,25 @@ class BP_Limit_Members_Group_Helper {
      * @return boolean
      */
     public function screen_request_membership() {
-        global $bp;
+		
+		
 
-        if ( ! is_user_logged_in() )
-            return false;
+		if ( ! is_user_logged_in() )
+			return false;
 
-        $bp = buddypress();
+		$bp = buddypress();
 
-        if ( 'private' != $bp->groups->current_group->status )
-            return false;
-        // If the user has submitted a request, send it.
-        if ( isset( $_POST['group-request-send'] ) ) {
+		if ( 'private' != $bp->groups->current_group->status )
+			return false;
 
-            // Check the nonce
-            if ( ! check_admin_referer( 'groups_request_membership' ) )
-                return false;
+		if( ! self::can_request( $bp->groups->current_group->id ) ) {
+			bp_core_add_message( self::get_message(), 'error' );
+			bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
+		}
 
-            //if the group has already enough members, do not allow
-            if( ! self::can_request( $bp->groups->current_group->id ) ) {
-                bp_core_add_message( self::get_message(), 'error' );
-                bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
-            }
+		//if here, means allowed
+		groups_screen_group_request_membership();
 
-           groups_screen_group_request_membership();
-
-        }
     }
     
     /**
