@@ -7,11 +7,14 @@
  * Description: Limit the no. of members a group can have. Group admins can enable/disable the limit and set their own limit if admin wants to allow them
  */
 
-class BP_Limit_Members_Group_Helper{
-    
+class BP_Limit_Members_Group_Helper {
+    /**
+	 *
+	 * @var BP_Limit_Members_Group_Helper
+	 */
     private static $instance;
     
-    private function __construct(){
+    private function __construct() {
        
         
       
@@ -25,14 +28,14 @@ class BP_Limit_Members_Group_Helper{
         add_action ( 'bp_loaded', array( $this, 'load_textdomain' ), 2 );
         
         //handle group join action
-         add_action( 'bp_actions', array( $this, 'action_join_group' ) );
+        add_action( 'bp_actions', array( $this, 'action_join_group' ) );
          
          //handle ajax group join/leave action
-         add_action( 'wp_ajax_joinleave_group', array($this, 'ajax_joinleave_group' ));
+        add_action( 'wp_ajax_joinleave_group', array($this, 'ajax_joinleave_group' ));
          
          
          //for individual group preferences if override is allowed
-         if( self::get_override() ){
+        if( self::get_override() ){
             //show form
             add_action( 'bp_before_group_settings_admin', array( $this, 'group_pref_form' ) );
             add_action( 'bp_before_group_settings_creation_step', array( $this, 'group_pref_form' ) );
@@ -41,15 +44,15 @@ class BP_Limit_Members_Group_Helper{
             add_action( 'groups_create_group', array( $this, 'save_group_prefs' ) );
             add_action( 'groups_update_group', array( $this, 'save_group_prefs' ) );
 
-         }
+        }
     }
     /**
      *
      * @return BP_Limit_Members_Group_Helper
      */
-    public static function get_instance(){
+    public static function get_instance() {
         
-        if( !isset( self::$instance ) )
+        if( ! isset( self::$instance ) )
                 self::$instance = new self();
         
         return self::$instance;
@@ -57,17 +60,17 @@ class BP_Limit_Members_Group_Helper{
     /**
      * Load plugin textdomain for translation
      */
-    function load_textdomain(){
+    public function load_textdomain() {
         
         $locale = apply_filters( 'bp-limit-group-membership_get_locale', get_locale() );
         
         // if load .mo file
-        if ( !empty( $locale ) ) {
+        if ( ! empty( $locale ) ) {
             $mofile_default = sprintf( '%slanguages/%s.mo', plugin_dir_path(__FILE__), $locale );
 
             $mofile = apply_filters( 'bp-limit-group-membership_load_textdomain_mofile', $mofile_default );
 
-                    if (is_readable( $mofile ) ) {
+                    if ( is_readable( $mofile ) ) {
                         // make sure file exists, and load it
                         load_textdomain( 'bp-limit-group-membership', $mofile );
             }
@@ -79,7 +82,7 @@ class BP_Limit_Members_Group_Helper{
     /**
      * Removes various BuddyPress actions and attches our own for custom functionality
      */
-    function remove_hooks(){
+    public function remove_hooks() {
         //remove the action to handle group join
         if( has_action( 'bp_actions', 'groups_action_join_group' ) )
             remove_action( 'bp_actions', 'groups_action_join_group' );
@@ -100,10 +103,10 @@ class BP_Limit_Members_Group_Helper{
      * Changes the callback used for request membership/group invite accept
      * 
      */
-    function change_screen_callback(){
+    public function change_screen_callback() {
         
       
-        if( has_action( 'bp_screens', 'groups_screen_group_request_membership' ) ){
+        if( has_action( 'bp_screens', 'groups_screen_group_request_membership' ) ) {
             
            remove_action( 'bp_screens', 'groups_screen_group_request_membership', 3 );
            //add our own callback to show the compose screen          
@@ -111,7 +114,8 @@ class BP_Limit_Members_Group_Helper{
             
            
         }
-        if( has_action( 'bp_screens', 'groups_screen_group_invites' ) ){
+		
+        if( has_action( 'bp_screens', 'groups_screen_group_invites' ) ) {
             
            remove_action( 'bp_screens', 'groups_screen_group_invites', 3 );
            //add our own callback to show the compose screen          
@@ -125,56 +129,56 @@ class BP_Limit_Members_Group_Helper{
      * Handle Group Join Action
      * 
      */
-    function action_join_group(){
+    public function action_join_group() {
         
         $bp = buddypress();
 
-        if ( !bp_is_single_item() || !bp_is_groups_component() || !bp_is_current_action( 'join' ) )
+        if ( ! bp_is_single_item() || ! bp_is_groups_component() || ! bp_is_current_action( 'join' ) )
             return false;
 
         // Nonce check
-        if ( !check_admin_referer( 'groups_join_group' ) )
+        if ( ! check_admin_referer( 'groups_join_group' ) )
             return false;
 
     
         // Skip if banned or already a member
-        if ( !groups_is_user_member( bp_loggedin_user_id(), $bp->groups->current_group->id ) && !groups_is_user_banned( bp_loggedin_user_id(), $bp->groups->current_group->id ) ) {
+        if ( ! groups_is_user_member( bp_loggedin_user_id(), $bp->groups->current_group->id ) && ! groups_is_user_banned( bp_loggedin_user_id(), $bp->groups->current_group->id ) ) {
 
-        //check for the current group settings
-        
-      //can the membership be requested
-       if( !self::can_request( $bp->groups->current_group->id ) ){
-           
-           bp_core_add_message( self::get_message(), 'error' );
-		   bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
-       }
-           
-       
-		// User wants to join a group that is not public
-		if ( $bp->groups->current_group->status != 'public' ) {
-			if ( !groups_check_user_has_invite( bp_loggedin_user_id(), $bp->groups->current_group->id ) ) {
-				bp_core_add_message( __( 'There was an error joining the group.', 'bp-limit-group-membership' ), 'error' );
-				bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
+			//check for the current group settings
+
+			//can the membership be requested
+			if( !self::can_request( $bp->groups->current_group->id ) ){
+
+				 bp_core_add_message( self::get_message(), 'error' );
+				 bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
 			}
+
+       
+			// User wants to join a group that is not public
+			if ( $bp->groups->current_group->status != 'public' ) {
+				if ( !groups_check_user_has_invite( bp_loggedin_user_id(), $bp->groups->current_group->id ) ) {
+					bp_core_add_message( __( 'There was an error joining the group.', 'bp-limit-group-membership' ), 'error' );
+					bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
+				}
+			}
+
+			// User wants to join any group
+			if ( !groups_join_group( $bp->groups->current_group->id ) )
+				bp_core_add_message( __( 'There was an error joining the group.', 'bp-limit-group-membership' ), 'error' );
+			else
+				bp_core_add_message( __( 'You joined the group!', 'bp-limit-group-membership' ) );
+
+			bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
 		}
 
-		// User wants to join any group
-		if ( !groups_join_group( $bp->groups->current_group->id ) )
-			bp_core_add_message( __( 'There was an error joining the group.', 'bp-limit-group-membership' ), 'error' );
-		else
-			bp_core_add_message( __( 'You joined the group!', 'bp-limit-group-membership' ) );
-
-		bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
-	}
-
-	bp_core_load_template( apply_filters( 'groups_template_group_home', 'groups/single/home' ) );
+		bp_core_load_template( apply_filters( 'groups_template_group_home', 'groups/single/home' ) );
     }
     
     /**
      * Ajaxified join/leave group
      * 
      */
-    function ajax_joinleave_group() {
+    public function ajax_joinleave_group() {
         // Bail if not a POST action
         if ( 'POST' !== strtoupper( $_SERVER['REQUEST_METHOD'] ) )
             return;
@@ -193,11 +197,11 @@ class BP_Limit_Members_Group_Helper{
              
           
 
-          if( !self::can_request($group->id)) {
+			if( ! self::can_request( $group->id ) ) {
 
-              echo self::get_message();
-                    exit(0);
-           }
+				echo self::get_message();
+					  exit(0);
+			}
 
             if ( 'public' == $group->status ) {
                 check_ajax_referer( 'groups_join_group' );
@@ -219,6 +223,7 @@ class BP_Limit_Members_Group_Helper{
             }
 
         } else {
+			
             check_ajax_referer( 'groups_leave_group' );
 
             if ( ! groups_leave_group( $group->id ) ) {
@@ -237,10 +242,10 @@ class BP_Limit_Members_Group_Helper{
      * @global type $bp
      * @return boolean
      */
-    function screen_request_membership() {
+    public function screen_request_membership() {
         global $bp;
 
-        if ( !is_user_logged_in() )
+        if ( ! is_user_logged_in() )
             return false;
 
         $bp = buddypress();
@@ -248,14 +253,14 @@ class BP_Limit_Members_Group_Helper{
         if ( 'private' != $bp->groups->current_group->status )
             return false;
         // If the user has submitted a request, send it.
-        if ( isset( $_POST['group-request-send']) ) {
+        if ( isset( $_POST['group-request-send'] ) ) {
 
             // Check the nonce
-            if ( !check_admin_referer( 'groups_request_membership' ) )
+            if ( ! check_admin_referer( 'groups_request_membership' ) )
                 return false;
 
             //if the group has already enough members, do not allow
-            if( !self::can_request( $bp->groups->current_group->id ) ){
+            if( ! self::can_request( $bp->groups->current_group->id ) ) {
                 bp_core_add_message( self::get_message(), 'error' );
                 bp_core_redirect( bp_get_group_permalink( $bp->groups->current_group ) );
             }
@@ -270,15 +275,17 @@ class BP_Limit_Members_Group_Helper{
      * Handle group invitation accept request
      * 
      */
-    function screen_invites() {
+    public function screen_invites() {
+		
         $group_id = (int)bp_action_variable( 1 );
 
         if ( bp_is_action_variable( 'accept' ) && is_numeric( $group_id ) ) {
             // Check the nonce
-            if ( !check_admin_referer( 'groups_accept_invite' ) )
+            if ( ! check_admin_referer( 'groups_accept_invite' ) )
                 return false;
              //if the group has already enough members, do not allow
-            if( !self::can_request( $group_id ) ){
+            if( ! self::can_request( $group_id ) ) {
+				
                 bp_core_add_message( self::get_message(), 'error' );
                 bp_core_redirect( trailingslashit( bp_loggedin_user_domain() . bp_get_groups_slug() . '/' . bp_current_action() ) );
 
@@ -295,17 +302,21 @@ class BP_Limit_Members_Group_Helper{
      * 
      * @return type 
      */
-    public static function get_limit(){
+    public static function get_limit() {
+		
         $allowed_count=absint( get_option( 'bp_limit_group_membership_count', 20 ) );//20 default request count   
-        return apply_filters( 'bp_limit_group_membership_count', $allowed_count );
+        
+		return apply_filters( 'bp_limit_group_membership_count', $allowed_count );
     }
   
     
-    public static function get_message(){
+    public static function get_message() {
+		
         return bp_get_option( 'bp_limit_group_membership_message', __( 'This group has limited membership. Please contact admin to join this group.', 'bp-limit-friendship-request' ) );
     }
    
-    public static function get_override(){
+    public static function get_override() {
+		
         return bp_get_option( 'bp_limit_group_membership_allow_override', 1 );
     }
    
@@ -315,9 +326,10 @@ class BP_Limit_Members_Group_Helper{
     * @param type $group_id
     * @return boolean
     */
-    public static function can_request( $group_id = false ){
+    public static function can_request( $group_id = false ) {
         
         $limit = 0;
+		
         if( is_super_admin() )
             return true;//do not stop super admin
         
@@ -325,7 +337,7 @@ class BP_Limit_Members_Group_Helper{
         
         $override_allowed = self::get_override();
         
-        if( $override_allowed ){
+        if( $override_allowed ) {
             
             //check if the group has disabled restriction
             if( groups_get_groupmeta( $group_id, 'group-disable-membership-limit' ) )
@@ -335,7 +347,7 @@ class BP_Limit_Members_Group_Helper{
             
         }
         
-        if( !$limit )
+        if( ! $limit )
             $limit = self::get_limit ();
         
         //check for the allowed 
@@ -351,7 +363,7 @@ class BP_Limit_Members_Group_Helper{
    /*** Single Group options if enabled*/
 
     //Group Preference form
-    function group_pref_form(){
+    public function group_pref_form(){
         if( !self::get_override() )//if override is not allowed
             return;//do not show if options are not enabled for individual group component
         $group = groups_get_current_group();
@@ -376,10 +388,13 @@ class BP_Limit_Members_Group_Helper{
      * Update group preference
      * @param type $group_id
      */
-    function save_group_prefs($group_id){
+    public function save_group_prefs( $group_id ) {
+		
           $disable = $_POST['group-disable-membership-limit'];
+		  
           groups_update_groupmeta($group_id, 'group-disable-membership-limit', $disable );
-          groups_update_groupmeta($group_id, 'limit_membership_count', intval($_POST['limit_membership_count']) );
+		  
+          groups_update_groupmeta($group_id, 'limit_membership_count', intval( $_POST['limit_membership_count'] ) );
 
     }
      
@@ -388,32 +403,34 @@ class BP_Limit_Members_Group_Helper{
     
     
     /** register settings for admin*/
-    function register_settings(){
+    public function register_settings() {
       
-            // Add the ajax Registration settings section
-            add_settings_section( 'bp_limit_group_membership_request',__( 'BP Limit Members Per Group',  'bp-limit-group-membership' ), array( $this, 'reg_section' ), 'buddypress' );
-            // Allow loading form via jax or nt?
-            add_settings_field( 'bp_limit_group_membership_count', __( 'How many Users Can join?',   'bp-limit-group-membership' ), array( $this, 'settings_field_count' ),   'buddypress', 'bp_limit_group_membership_request' );
-            add_settings_field( 'bp_limit_group_membership_message', __( 'What Message you want to display if the group reaches the limit?',   'bp-limit-group-membership' ), array( $this, 'settings_field_message' ),   'buddypress', 'bp_limit_group_membership_request' );
-            add_settings_field( 'bp_limit_group_membership_allow_override', __( 'Do you want to allow group admins to override settings?',   'bp-limit-group-membership' ), array( $this, 'settings_field_override' ),   'buddypress', 'bp_limit_group_membership_request' );
-           
-            register_setting  ( 'buddypress', 'bp_limit_group_membership_count','intval' );
-            register_setting  ( 'buddypress', 'bp_limit_group_membership_message');
-            register_setting  ( 'buddypress', 'bp_limit_group_membership_allow_override');
+		// Add the ajax Registration settings section
+		add_settings_section( 'bp_limit_group_membership_request',__( 'BP Limit Members Per Group',  'bp-limit-group-membership' ), array( $this, 'reg_section' ), 'buddypress' );
+		// Allow loading form via jax or nt?
+		add_settings_field( 'bp_limit_group_membership_count', __( 'How many Users Can join?',   'bp-limit-group-membership' ), array( $this, 'settings_field_count' ),   'buddypress', 'bp_limit_group_membership_request' );
+		add_settings_field( 'bp_limit_group_membership_message', __( 'What Message you want to display if the group reaches the limit?',   'bp-limit-group-membership' ), array( $this, 'settings_field_message' ),   'buddypress', 'bp_limit_group_membership_request' );
+		add_settings_field( 'bp_limit_group_membership_allow_override', __( 'Do you want to allow group admins to override settings?',   'bp-limit-group-membership' ), array( $this, 'settings_field_override' ),   'buddypress', 'bp_limit_group_membership_request' );
+
+		register_setting  ( 'buddypress', 'bp_limit_group_membership_count','intval' );
+		register_setting  ( 'buddypress', 'bp_limit_group_membership_message');
+		register_setting  ( 'buddypress', 'bp_limit_group_membership_allow_override');
     }  
     
-    function reg_section(){
+    public function reg_section() {
         
     }
     
-    function settings_field_count(){
+    public function settings_field_count() {
+		
             $val=self::get_limit();?>
             <input id="bp_limit_group_membership_count" name="bp_limit_group_membership_count" type="text" value="<?php echo $val;?>"  />
     <?php
     }
    
   
-   function settings_field_message(){
+    public function settings_field_message() {
+		
         $val=self::get_message() ?>
 
          <label>
@@ -421,8 +438,10 @@ class BP_Limit_Members_Group_Helper{
    <?php    
        
    }
-    function settings_field_override(){
-        $val=self::get_override(); ?>
+    
+   public function settings_field_override() {
+	   
+        $val = self::get_override(); ?>
 
             <label><input id='bp_limit_group_membership_allow_override' name='bp_limit_group_membership_allow_override' type='checkbox' value='1' <?php echo checked(1,$val);?> /> <?php _e( 'Yes','bp-limit-group-membership');?></label>     
    <?php    
@@ -431,7 +450,9 @@ class BP_Limit_Members_Group_Helper{
    
 }
 
-add_action('bp_loaded','bp_group_membership_limit_init');
-function bp_group_membership_limit_init(){
+add_action( 'bp_loaded', 'bp_group_membership_limit_init' );
+
+function bp_group_membership_limit_init() {
+	
     BP_Limit_Members_Group_Helper::get_instance();
 }
