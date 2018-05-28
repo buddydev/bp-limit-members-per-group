@@ -64,6 +64,11 @@ class BP_Limit_Members_Group_Helper {
 	    //handle ajax group join/leave action
 	    add_action( 'wp_ajax_joinleave_group', array($this, 'ajax_joinleave_group' ));
 
+	    // Nouveau campatibilty
+        add_action( 'wp_ajax_groups_join_group', array( $this, 'nouveau_ajax_group_actions' ), 9 );
+        add_action( 'wp_ajax_groups_accept_invite', array( $this, 'nouveau_ajax_group_actions' ), 9 );
+        add_action( 'wp_ajax_groups_request_membership', array( $this, 'nouveau_ajax_group_actions' ), 9 );
+
 	    //show form
 		add_action( 'bp_before_group_settings_admin', array( $this, 'group_pref_form' ) );
 		add_action( 'bp_before_group_settings_creation_step', array( $this, 'group_pref_form' ) );
@@ -226,6 +231,189 @@ class BP_Limit_Members_Group_Helper {
 
         exit;
     }
+
+	/**
+	 * Join or leave a group when clicking the "join/leave" button via a POST request.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return string HTML
+	 */
+	public function nouveau_ajax_group_actions() {
+
+		$response = array(
+			'feedback' => sprintf(
+				'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+				esc_html__( 'There was a problem performing this action. Please try again.', 'buddypress' )
+			),
+		);
+
+		// Bail if not a POST action.
+		if ( ! bp_is_post_request() || empty( $_POST['action'] ) ) {
+			wp_send_json_error( $response );
+		}
+
+		if ( empty( $_POST['nonce'] ) || empty( $_POST['item_id'] ) || ! bp_is_active( 'groups' ) ) {
+			wp_send_json_error( $response );
+		}
+
+		// Use default nonce
+		$nonce = $_POST['nonce'];
+		$check = 'bp_nouveau_groups';
+
+		// Use a specific one for actions needed it
+		if ( ! empty( $_POST['_wpnonce'] ) && ! empty( $_POST['action'] ) ) {
+			$nonce = $_POST['_wpnonce'];
+			$check = $_POST['action'];
+		}
+
+		// Nonce check!
+		if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, $check ) ) {
+			wp_send_json_error( $response );
+		}
+
+		// Cast gid as integer.
+		$group_id = (int) $_POST['item_id'];
+
+		$errors = array(
+			'cannot' => sprintf( '<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>', esc_html__( 'You cannot join this group.', 'buddypress' ) ),
+			'member' => sprintf( '<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>', esc_html__( 'You are already a member of the group.', 'buddypress' ) ),
+		);
+
+		if ( groups_is_user_banned( bp_loggedin_user_id(), $group_id ) ) {
+			$response['feedback'] = $errors['cannot'];
+			wp_send_json_error( $response );
+		}
+
+		// Validate and get the group
+		$group = groups_get_group( array( 'group_id' => $group_id ) );
+
+		if ( empty( $group->id ) ) {
+			wp_send_json_error( $response );
+		}
+
+		// Manage all button's possible actions here.
+		switch ( $_POST['action'] ) {
+
+			case 'groups_accept_invite':
+
+				if ( ! self::can_request( $group->id ) ) {
+					$response = array(
+						'feedback' => sprintf(
+							'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+							self::get_message()
+						),
+						'type'     => 'error',
+					);
+				} elseif ( ! groups_accept_invite( bp_loggedin_user_id(), $group_id ) ) {
+					$response = array(
+						'feedback' => sprintf(
+							'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+							esc_html__( 'Group invite could not be accepted.', 'buddypress' )
+						),
+						'type'     => 'error',
+					);
+
+				} else {
+					groups_record_activity(
+						array(
+							'type'    => 'joined_group',
+							'item_id' => $group->id,
+						)
+					);
+
+					// User is now a member of the group
+					$group->is_member = '1';
+
+					$response = array(
+						'feedback' => sprintf(
+							'<div class="bp-feedback success"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+							esc_html__( 'Group invite accepted.', 'buddypress' )
+						),
+						'type'     => 'success',
+						'is_user'  => bp_is_user(),
+						'contents' => bp_get_group_join_button( $group ),
+						'is_group' => bp_is_group(),
+					);
+				}
+				break;
+
+			case 'groups_join_group':
+				if ( groups_is_user_member( bp_loggedin_user_id(), $group->id ) ) {
+					$response = array(
+						'feedback' => $errors['member'],
+						'type'     => 'error',
+					);
+				} elseif ( ! self::can_request( $group->id ) ) {
+                    $response = array(
+                        'feedback' => sprintf(
+                            '<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+                            self::get_message()
+                        ),
+                        'type'     => 'error',
+                    );
+			    } elseif ( 'public' !== $group->status ) {
+					$response = array(
+						'feedback' => $errors['cannot'],
+						'type'     => 'error',
+					);
+				} elseif ( ! groups_join_group( $group->id ) ) {
+					$response = array(
+						'feedback' => sprintf(
+							'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+							esc_html__( 'Error joining this group.', 'buddypress' )
+						),
+						'type'     => 'error',
+					);
+				} else {
+					// User is now a member of the group
+					$group->is_member = '1';
+
+					$response = array(
+						'contents' => bp_get_group_join_button( $group ),
+						'is_group' => bp_is_group(),
+						'type'     => 'success',
+					);
+				}
+				break;
+
+			case 'groups_request_membership' :
+				if ( ! self::can_request( $group->id ) ) {
+					$response = array(
+						'feedback' => sprintf(
+							'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+							self::get_message()
+						),
+						'type'     => 'error',
+					);
+				} elseif ( ! groups_send_membership_request( bp_loggedin_user_id(), $group->id ) ) {
+					$response = array(
+						'feedback' => sprintf(
+							'<div class="bp-feedback error"><span class="bp-icon" aria-hidden="true"></span><p>%s</p></div>',
+							esc_html__( 'Error requesting membership.', 'buddypress' )
+						),
+						'type'     => 'error',
+					);
+				} else {
+					// Request is pending
+					$group->is_pending = '1';
+
+					$response = array(
+						'contents' => bp_get_group_join_button( $group ),
+						'is_group' => bp_is_group(),
+						'type'     => 'success',
+					);
+				}
+				break;
+
+		}
+
+		if ( 'error' === $response['type'] ) {
+			wp_send_json_error( $response );
+		} elseif ( 'success' == $response['type'] ) {
+			wp_send_json_success( $response );
+		}
+	}
 
     /**
      *  Handle limiting for private group membership request
