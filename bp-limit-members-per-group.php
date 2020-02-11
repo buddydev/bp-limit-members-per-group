@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BP Limit Members Per group
  * Plugin URI: http://buddydev.com/plugins/bp-limit-members-per-group/
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Brajesh
  * Description: Limit the no. of members a group can have. Group admins can enable/disable the limit and set their own limit if admin wants to allow them
  */
