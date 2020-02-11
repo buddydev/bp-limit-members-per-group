@@ -545,7 +545,7 @@ class BP_Limit_Members_Group_Helper {
             <label><input type="checkbox" name="group-disable-membership-limit" id="group-disable-membership-limit" value="1" <?php echo checked( 1, groups_get_groupmeta( $group->id, 'group-disable-membership-limit' ) ); ?>/> <?php _e( 'Disable Membership Limit', 'bp-limit-group-membership' ) ?></label>
         </div>
         <div class="limit-membership-count">
-            <label> <?php _e( 'No. of Allowed members', 'bp-limit-group-membership' ) ?><input type="text" name="limit_membership_count" id="limit_membership_count" value="<?php echo $count;?>" size="5" maxlength="10"  style="width:20px;"/></label>
+            <label> <?php _e( 'No. of Allowed members', 'bp-limit-group-membership' ) ?><input type="text" name="limit_membership_count" id="limit_membership_count" value="<?php echo $count;?>" size="5" maxlength="10" /></label>
         </div>
         <?php
 
@@ -556,16 +556,18 @@ class BP_Limit_Members_Group_Helper {
      *
      * @param int $group_id Group id.
      */
-    public function save_group_prefs( $group_id ) {
+	public function save_group_prefs( $group_id ) {
 
-        if ( ! self::get_override() ) {
-            return;
-        }
+		if ( ! self::get_override() ) {
+			return;
+		}
 
-        $disable = $_POST['group-disable-membership-limit'];
-        groups_update_groupmeta($group_id, 'group-disable-membership-limit', $disable );
-        groups_update_groupmeta($group_id, 'limit_membership_count', intval( $_POST['limit_membership_count'] ) );
-    }
+		$disable          = isset( $_POST['group-disable-membership-limit'] ) ? 1 : 0;
+		$membership_count = isset( $_POST['limit_membership_count'] ) ? absint( $_POST['limit_membership_count'] ) : 0;
+
+		groups_update_groupmeta( $group_id, 'group-disable-membership-limit', $disable );
+		groups_update_groupmeta( $group_id, 'limit_membership_count', $membership_count );
+	}
      
     /* admin helper*/
 
